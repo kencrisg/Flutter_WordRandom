@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color.fromARGB(255, 29, 94, 179)),
+              seedColor: const Color.fromARGB(255, 115, 176, 62)),
         ),
         home: MyHomePage(),
       ),
@@ -44,6 +44,54 @@ class MyAppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void deleteWord(word) {
+    if (favorites.contains(word)) {
+      favorites.remove(word);
+    } else {
+      print("no hay nada pa $word");
+    }
+    notifyListeners();
+  }
+
+  void showConfirmationDialog(BuildContext context, word) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmar eliminación'),
+          content: Text.rich(
+            TextSpan(
+              text: '¿Estás seguro de que deseas eliminar la palabra: ',
+              children: <TextSpan>[
+                TextSpan(
+                  text: word.toString(),
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: '?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Cierra el diálogo
+              },
+            ),
+            TextButton(
+              child: Text('Eliminar'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Cierra el diálogo
+                deleteWord(
+                    word); // Llama a la función que realiza la acción de eliminación
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -53,6 +101,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   var selectedIndex = 0;
+  bool isRailVisible = false; // Booleano para controlar la visibilidad
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
     switch (selectedIndex) {
       case 0:
         page = GeneratorPage();
+
         break;
       case 1:
         page = FavoritesPage();
@@ -69,30 +119,52 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     return LayoutBuilder(builder: (context, constraints) {
       return Scaffold(
-        body: Row(
-          children: [
-            SafeArea(
-              child: NavigationRail(
-                extended: constraints.maxWidth >= 600,
-                destinations: [
-                  NavigationRailDestination(
-                      icon: Icon(Icons.home), label: Text("Inicio")),
-                  NavigationRailDestination(
-                      icon: Icon(Icons.favorite), label: Text("Favoritos")),
-                ],
-                selectedIndex: selectedIndex,
-                onDestinationSelected: (value) {
+        appBar: AppBar(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(isRailVisible
+                    ? Icons.close
+                    : Icons.menu), // Ícono cambia según el estado
+                onPressed: () {
                   setState(() {
-                    selectedIndex = value;
+                    isRailVisible = !isRailVisible; // Cambiar la visibilidad
                   });
                 },
               ),
-            ),
+              Text.rich(TextSpan(
+                  text: "Mi Primer Flutter App 😊",
+                  style: TextStyle(fontWeight: FontWeight.bold))),
+            ],
+          ),
+        ),
+        body: Row(
+          children: [
+            if (isRailVisible)
+              SafeArea(
+                child: NavigationRail(
+                  extended: constraints.maxWidth >= 600,
+                  destinations: [
+                    NavigationRailDestination(
+                        icon: Icon(Icons.home), label: Text("Inicio")),
+                    NavigationRailDestination(
+                        icon: Icon(Icons.favorite), label: Text("Favoritos")),
+                  ],
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (value) {
+                    isRailVisible = false;
+                    setState(() {
+                      selectedIndex = value;
+                    });
+                  },
+                ),
+              ),
             Expanded(
                 child: Container(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              // color: Theme.of(context).colorScheme.primaryContainer,
               child: page,
-            ))
+            )),
           ],
         ),
       );
@@ -113,15 +185,23 @@ class FavoritesPage extends StatelessWidget {
 
     return ListView(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text('Tu tienes '
-              '${appState.favorites.length} elementos favoritos:'),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text('Tu tienes '
+                '${appState.favorites.length} elementos favoritos:'),
+          ),
         ),
         for (var pair in appState.favorites)
           ListTile(
-            leading: Icon(Icons.favorite),
-            title: Text(pair.asLowerCase),
+            title: Text(pair.asString),
+            trailing: ElevatedButton.icon(
+              onPressed: () {
+                appState.showConfirmationDialog(context, pair);
+              },
+              icon: Icon(Icons.delete),
+              label: Text("Eliminar"),
+            ),
           ),
       ],
     );
@@ -147,7 +227,7 @@ class GeneratorPage extends StatelessWidget {
           children: [
             BigCard(pair: pair),
             SizedBox(
-              height: 10,
+              height: 25,
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -162,11 +242,12 @@ class GeneratorPage extends StatelessWidget {
                 SizedBox(
                   width: 10,
                 ),
-                ElevatedButton(
+                ElevatedButton.icon(
+                  icon: Icon(Icons.skip_next),
                   onPressed: () {
                     appState.getNext();
                   },
-                  child: Text('Palabra Siguiente'),
+                  label: Text('Siguiente'),
                 ),
               ],
             ),
